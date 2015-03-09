@@ -8,10 +8,6 @@ import urllib
 import json
 import sqlite3
 
-# sample queries:
-# search: http://www.omdbapi.com/?s=star%20wars&y=1977&type=movie
-# full info: http://www.omdbapi.com/?t=star%20wars&y=1977&plot=short
-
 # tables:
 # movies: imdbID, title, year, released, runtime, rated,
 #         plot, poster, metascore, imdbRating, imdbVotes
@@ -24,8 +20,6 @@ import sqlite3
 # viewings: imdbID, date
 
 
-# remove movie by title and format
-#
 # add a series to one or more movies: series <series> <movie1> <movie2> ...
 #
 # add one or more viewing times: watched <movie> <date1> <date2> ...
@@ -38,7 +32,7 @@ class MovieDatabase(object):
         self.base_url = 'http://www.omdbapi.com/?'
         self.connection = sqlite3.connect(file_name)
         self.cursor = self.connection.cursor()
-        if os.path.isfile(file_name):
+        if not os.path.isfile(file_name):
             print 'Creating new database: {0}'.format(file_name)
             self.create_tables()
 
@@ -78,7 +72,7 @@ class MovieDatabase(object):
             if len(records) > 0:
                 print 'Already in the database:'
                 for r in records:
-                    print '{0} ({1})'.format(r[0], r[1])
+                    print u'{0} ({1})'.format(r[0], r[1])
             else:
                 # add to formats
                 self.cursor.execute("INSERT INTO formats VALUES (?, ?)",
@@ -91,7 +85,22 @@ class MovieDatabase(object):
                     movie_data = self.query_omdb_by_id(search_data['imdbID'])
                     if len(movie_data) > 0:
                         self.add_omdb_data(movie_data)
-                print '{0} ({1}) added'.format(search_data['Title'], fmt)
+                print u'{0} ({1}) added'.format(search_data['Title'], fmt)
+
+    def delete_movie(self, title, fmt):
+        fmt = self.standardize_format(fmt)
+        search_data = self.search_omdb(title)
+        if search_data is not None:
+            records = list(self.cursor.execute(
+                "SELECT id, format FROM formats WHERE id=? AND format=?",
+                (search_data['imdbID'], fmt)))
+            if len(records) == 0:
+                print 'Not in the database.'
+            else:
+                self.cursor.execute(
+                    "DELETE FROM formats WHERE id=? AND format=?",
+                    (search_data['imdbID'], fmt))
+                print u'{0} ({1}) deleted'.format(search_data['Title'], fmt)
 
     def search_omdb(self, title):
         query = 's=' + urllib.quote(title) + '&type=movie'
@@ -102,18 +111,20 @@ class MovieDatabase(object):
         elif len(results['Search']) > 1:
             print 'Select a movie, or press Enter to cancel:'
             for i, result in enumerate(results['Search']):
-                print '{0}: {1} ({2})'.format(i, result['Title'],
-                                              result['Year'])
+                print u'{0}: {1} ({2})'.format(i, result['Title'],
+                                               result['Year'])
             choice = raw_input()
             if len(choice) > 0:
                 try:
                     movie_data = results['Search'][int(choice)]
                 except:
                     movie_data = None
+            else:
+                movie_data = None
         else:
             movie_data = results['Search'][0]
-            print 'Found {0} ({1})'.format(movie_data['Title'],
-                                           movie_data['Year'])
+            print u'Found {0} ({1})'.format(movie_data['Title'],
+                                            movie_data['Year'])
             print 'Is this the right movie?'
             confirm = raw_input()
             if confirm.strip().lower().startswith('n'):
