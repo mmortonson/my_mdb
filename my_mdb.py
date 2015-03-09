@@ -102,6 +102,14 @@ class MovieDatabase(object):
                     (search_data['imdbID'], fmt))
                 print u'{0} ({1}) deleted'.format(search_data['Title'], fmt)
 
+    def add_to_series(self, title, series):
+        search_data = self.search_omdb(title)
+        if search_data is not None:
+            self.cursor.execute("INSERT INTO series VALUES (?, ?)",
+                                (search_data['imdbID'], series))
+            print u'Added {0} to the series {1}'.format(
+                search_data['Title'], series)
+
     def search_omdb(self, title):
         query = 's=' + urllib.quote(title) + '&type=movie'
         results = self.omdb_query(query)
@@ -160,10 +168,6 @@ class MovieDatabase(object):
              omdb_dict['Released'], omdb_dict['Runtime'], omdb_dict['Rated'],
              omdb_dict['Plot'], omdb_dict['Poster'],
              omdb_dict['imdbRating'], omdb_dict['imdbVotes']))
-        self.cursor.execute("INSERT INTO viewings(id) VALUES (?)",
-                            (omdb_dict['imdbID'],))
-        self.cursor.execute("INSERT INTO series(id) VALUES (?)",
-                            (omdb_dict['imdbID'],))
         genres = self.split_into_list(omdb_dict['Genre'])
         for g in genres:
             self.cursor.execute("INSERT INTO genres VALUES (?, ?)",
