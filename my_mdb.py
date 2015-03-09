@@ -20,8 +20,6 @@ import sqlite3
 # viewings: imdbID, date
 
 
-# add a series to one or more movies: series <series> <movie1> <movie2> ...
-#
 # add one or more viewing times: watched <movie> <date1> <date2> ...
 #
 # query: search runtime < 120 min and lastwatched > 1 year
@@ -109,6 +107,14 @@ class MovieDatabase(object):
                                 (search_data['imdbID'], series))
             print u'Added {0} to the series {1}'.format(
                 search_data['Title'], series)
+
+    def add_viewing_date(self, title, date):
+        search_data = self.search_omdb(title)
+        if search_data is not None:
+            self.cursor.execute("INSERT INTO viewings VALUES (?, ?)",
+                                (search_data['imdbID'], date))
+            print u'Added viewing date {0} for {1}'.format(
+                date, search_data['Title'])
 
     def search_omdb(self, title):
         query = 's=' + urllib.quote(title) + '&type=movie'
