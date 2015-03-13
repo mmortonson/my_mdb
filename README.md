@@ -1,7 +1,7 @@
 ## Personal movie database
 
 Interactive script for managing a personal movie database.
-Uses the [OMDB API] to obtain movie metadata to add to the database,
+Uses the [OMDb API] to obtain movie metadata to add to the database,
 and SQL to search and edit the contents of the database.
 
 Features:
@@ -17,3 +17,4 @@ or you need to create a new database for some other reason, just use a new
 file name and a new database will be automatically created.
 
 
+[OMDb API]: http://www.omdbapi.com
