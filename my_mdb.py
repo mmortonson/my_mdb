@@ -20,11 +20,6 @@ import sqlite3
 # viewings: imdbID, date
 
 
-# add one or more viewing times: watched <movie> <date1> <date2> ...
-#
-# query: search runtime < 120 min and lastwatched > 1 year
-
-
 class MovieDatabase(object):
     def __init__(self, file_name):
         self.base_url = 'http://www.omdbapi.com/?'
@@ -100,6 +95,28 @@ class MovieDatabase(object):
                     (search_data['imdbID'], fmt))
                 print u'{0} ({1}) deleted'.format(search_data['Title'], fmt)
 
+    def get_all_movies(self):
+        return list(self.cursor.execute("SELECT title FROM movies"))
+
+    def search_by_runtime(self, condition):
+        op = ''
+        i = 0
+        for c in condition.strip():
+            if c in ['=', '<', '>']:
+                op += c
+                i += 1
+            else:
+                break
+        value = condition.strip()[i:]
+        if op in ['=', '<', '<=', '>', '>=']:
+            records = list(self.cursor.execute(
+                "SELECT title, runtime FROM movies WHERE runtime" +
+                op + "?", (value,)))
+            return records
+        else:
+            print 'Invalid search condition.'
+            return []
+
     def add_to_series(self, title, series):
         search_data = self.search_omdb(title)
         if search_data is not None:
@@ -171,8 +188,8 @@ class MovieDatabase(object):
         self.cursor.execute(
             "INSERT INTO movies VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (omdb_dict['imdbID'], omdb_dict['Title'], omdb_dict['Year'],
-             omdb_dict['Released'], omdb_dict['Runtime'], omdb_dict['Rated'],
-             omdb_dict['Plot'], omdb_dict['Poster'],
+             omdb_dict['Released'], omdb_dict['Runtime'].split()[0],
+             omdb_dict['Rated'], omdb_dict['Plot'], omdb_dict['Poster'],
              omdb_dict['imdbRating'], omdb_dict['imdbVotes']))
         genres = self.split_into_list(omdb_dict['Genre'])
         for g in genres:
@@ -225,15 +242,35 @@ class InputParser(object):
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('file', help='name of the database file')
-    args = parser.parse_args()
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument('file', help='name of the database file')
+    args = arg_parser.parse_args()
 
-    mdb = MovieDatabase(args[0])
+    mdb = MovieDatabase(args.file)
     input_parser = InputParser()
     while not input_parser.has_input() or \
             (input_parser.has_input() and
              not input_parser.get_input(0) in ('exit', 'quit', 'q')):
-        input_parser.read_input()
+        input_parser.read_input('\nAdd, delete, search, or exit?\n')
+        if input_parser.has_input() and \
+                input_parser.get_input(0).lower() == 'add':
+            title = raw_input('Movie?\n')
+            fmt = raw_input('Format?\n')
+            mdb.add_movie(title, fmt)
+        elif input_parser.has_input() and \
+                input_parser.get_input(0).lower() == 'delete':
+            title = raw_input('Movie?\n')
+            fmt = raw_input('Format?\n')
+            mdb.delete_movie(title, fmt)
+        elif input_parser.has_input() and \
+                input_parser.get_input(0).lower() == 'search':
+            runtime = raw_input('Runtime in minutes (e.g. any, or < 120)?\n')
+            print
+            if runtime.split()[0].lower() == 'any':
+                for movie in mdb.get_all_movies():
+                    print u'{0}'.format(movie[0])
+            else:
+                for movie in mdb.search_by_runtime(runtime):
+                    print u'{0} - {1} min.'.format(*movie)
 
     mdb.close()
