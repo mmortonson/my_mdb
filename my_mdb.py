@@ -7,6 +7,8 @@ import re
 import urllib
 import json
 import sqlite3
+import datetime
+import dateutil
 
 # tables:
 # movies: imdbID, title, year, released, runtime, rated,
@@ -18,6 +20,23 @@ import sqlite3
 # writers: imdbID, name
 # formats: imdbID, format
 # viewings: imdbID, date
+
+
+def strip_operator(condition):
+    op = ''
+    i = 0
+    for c in condition.strip():
+        if c in ['=', '<', '>']:
+            op += c
+            i += 1
+        else:
+            break
+    value = condition.strip()[i:].strip()
+    if op in ['=', '<', '<=', '>', '>=']:
+        return (op, value)
+    else:
+        print 'Invalid condition.'
+        return ('', value)
 
 
 class MovieDatabase(object):
@@ -41,8 +60,8 @@ class MovieDatabase(object):
                             "imdbVotes INTEGER)")
         self.cursor.execute("CREATE TABLE formats (id TEXT, format TEXT, " +
                             "PRIMARY KEY (id, format))")
-        self.cursor.execute("CREATE TABLE viewings (id TEXT, watched DATE, " +
-                            "PRIMARY KEY (id, watched))")
+        self.cursor.execute("CREATE TABLE viewings (id TEXT, view_date DATE, " +
+                            "PRIMARY KEY (id, view_date))")
         self.cursor.execute("CREATE TABLE series (id TEXT, series TEXT, " +
                             "PRIMARY KEY (id, series))")
         self.cursor.execute("CREATE TABLE genres (id TEXT, genre TEXT, " +
@@ -98,24 +117,45 @@ class MovieDatabase(object):
     def get_all_movies(self):
         return list(self.cursor.execute("SELECT title FROM movies"))
 
-    def search_by_runtime(self, condition):
-        op = ''
-        i = 0
-        for c in condition.strip():
-            if c in ['=', '<', '>']:
-                op += c
-                i += 1
-            else:
-                break
-        value = condition.strip()[i:]
-        if op in ['=', '<', '<=', '>', '>=']:
-            records = list(self.cursor.execute(
-                "SELECT title, runtime FROM movies WHERE runtime" +
-                op + "?", (value,)))
-            return records
-        else:
-            print 'Invalid search condition.'
-            return []
+    def search(self, filters):
+        # replace these with query dictionary?
+        query_string = "SELECT "
+        query_columns = ["title"]
+        query_tables = ["movies"]
+        query_filters = []
+        query_values = []
+        # replace if statements with loop over keywords and new function?
+        if 'runtime' in filters:
+            condition = filters['runtime']
+            op, value = strip_operator(condition)
+            if not op:
+                return []
+            query_columns.append("runtime")
+            query_filters.append("runtime " + op + " ?")
+            query_values.append(value)
+        if 'last_viewed' in filters:
+            condition = filters['last_viewed']
+            op, value = strip_operator(condition)
+            if not op:
+                return []
+            query_tables.append("viewings")
+            query_columns.append("view_date")
+            # only works for op = "="
+            # need MIN/MAX for other cases
+            query_filters.append("view_date " + op + " ?")
+            query_values.append(value)
+
+        query_string += ", ".join(query_columns) + " FROM " + \
+            " JOIN ".join(query_tables)
+        if filters:
+            if len(query_tables) > 1:
+                query_string += " ON movies.id = " + \
+                    ".id AND movies.id = ".join(query_tables[1:]) + ".id"
+            query_string += " WHERE " + " AND ".join(query_filters)
+        print query_string
+        print query_values
+        # records = list(self.cursor.execute(query_string, query_values))
+        return []
 
     def add_to_series(self, title, series):
         search_data = self.search_omdb(title)
@@ -264,13 +304,22 @@ if __name__ == '__main__':
             mdb.delete_movie(title, fmt)
         elif input_parser.has_input() and \
                 input_parser.get_input(0).lower() == 'search':
-            runtime = raw_input('Runtime in minutes (e.g. any, or < 120)?\n')
+            filters = {}
+            n_filters = 0
+            output_string = u'{0}'
+            runtime = raw_input('Runtime in minutes (e.g. < 120)? ' +
+                                'Press Enter to skip this filter.\n')
+            last_viewed = raw_input('Time since last viewing ' +
+                                    '(e.g. > 1 year)? ' +
+                                    'Press Enter to skip this filter.\n')
+            if runtime:
+                filters['runtime'] = runtime
+                n_filters += 1
+                output_string += ' - {' + str(n_filters) + '} min.'
+            if last_viewed:
+                filters['last_viewed'] = last_viewed
             print
-            if runtime.split()[0].lower() == 'any':
-                for movie in mdb.get_all_movies():
-                    print u'{0}'.format(movie[0])
-            else:
-                for movie in mdb.search_by_runtime(runtime):
-                    print u'{0} - {1} min.'.format(*movie)
+            for movie in mdb.search(filters):
+                print output_string.format(*movie)
 
     mdb.close()
