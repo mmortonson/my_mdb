@@ -83,6 +83,7 @@ class MovieDatabase(object):
         self.cursor.execute("CREATE TABLE writers (id TEXT, name TEXT, " +
                             "PRIMARY KEY (id, name))")
         self.create_latest_viewings()
+        self.connection.commit()
 
     def add_movie(self, title, fmt):
         fmt = self.standardize_format(fmt)
@@ -109,6 +110,7 @@ class MovieDatabase(object):
                     if len(movie_data) > 0:
                         self.add_omdb_data(movie_data)
                 print u'\n{0} ({1}) added'.format(search_data['Title'], fmt)
+            self.connection.commit()
 
     def delete_movie(self, title, fmt):
         fmt = self.standardize_format(fmt)
@@ -124,6 +126,7 @@ class MovieDatabase(object):
                     "DELETE FROM formats WHERE id=? AND format=?",
                     (search_data['imdbID'], fmt))
                 print u'\n{0} ({1}) deleted'.format(search_data['Title'], fmt)
+            self.connection.commit()
 
     def get_all_movies(self):
         return list(self.cursor.execute("SELECT title FROM movies"))
@@ -200,6 +203,7 @@ class MovieDatabase(object):
                                     (search_data['imdbID'], series))
             print u'\nAdded {0} to the series {1}'.format(
                 search_data['Title'], series)
+            self.connection.commit()
 
     def add_viewing_date(self, title, date):
         search_data = self.search_omdb(title)
@@ -213,6 +217,7 @@ class MovieDatabase(object):
                 self.create_latest_viewings()
             print u'\nAdded viewing date {0} for {1}'.format(
                 date, search_data['Title'])
+            self.connection.commit()
 
     def create_latest_viewings(self):
         self.cursor.execute("DROP VIEW IF EXISTS latest_viewings")
