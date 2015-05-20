@@ -146,7 +146,7 @@ class MovieDatabase(object):
             query_values.append(value)
 
         query_string += ", ".join(query_columns) + " FROM " + \
-            " JOIN ".join(query_tables)
+            " LEFT JOIN ".join(query_tables)
         if filters:
             if len(query_tables) > 1:
                 query_string += " ON movies.id = " + \
