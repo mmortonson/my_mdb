@@ -6,10 +6,11 @@ and SQL to search and edit the contents of the database.
 
 Features:
 
-- Add movies you own and specify their formats (e.g. blu ray, iTunes, etc.).
+- Add movies you own and specify their formats (e.g. blu ray, iTunes, etc.)
+  and other information like series name and date(s) viewed.
 - Delete movies from the database.
-- Search for movies that match given criteria (currently, only
-  filtering by runtime is enabled).
+- Search for movies that match given criteria (e.g. runtime or time since
+  last viewing).
 
 To run from the command line: `./my_mdb.py` followed by the name of
 your movie database file. If this is your first time running the program
