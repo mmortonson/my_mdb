@@ -168,8 +168,9 @@ class MovieDatabase(object):
             delta = dateutil.relativedelta.relativedelta(**interval)
             value = (today - delta).isoformat()
             query_tables.append("latest_viewings")
-            query_columns.append("view_date")
-            query_filters.append("view_date " + op + " ?")
+            query_columns.append("COALESCE(view_date, '0001-01-01') " +
+                                 "AS latest_date")
+            query_filters.append("latest_date " + op + " ?")
             query_values.append(value)
 
         query_string += ", ".join(query_columns) + " FROM " + \
@@ -359,12 +360,12 @@ if __name__ == '__main__':
             filters = {}
             n_filters = 0
             output_string = u'{0}'
-            runtime = raw_input('Runtime in minutes (e.g. < 120)? ' +
-                                'Press Enter to skip this filter.\n')
-            last_viewed = raw_input('Time since last viewing, ' +
+            runtime = raw_input('\nRuntime in minutes (e.g. < 120)?\n' +
+                                '(Press Enter to skip this filter.)\n')
+            last_viewed = raw_input('\nTime since last viewing, ' +
                                     'in years, months, or days ' +
-                                    '(e.g. > 1 year)? ' +
-                                    'Press Enter to skip this filter.\n')
+                                    '(e.g. > 1 year)?\n' +
+                                    '(Press Enter to skip this filter.)\n')
             if runtime:
                 filters['runtime'] = runtime
                 n_filters += 1
@@ -372,11 +373,14 @@ if __name__ == '__main__':
             if last_viewed:
                 filters['last_viewed'] = last_viewed
                 n_filters += 1
-                output_string += ' - viewed {' + str(n_filters) + '}'
+                output_string += ' - last viewed {' + str(n_filters) + '}'
             print
             results = mdb.search(filters)
             if results:
                 for movie in results:
+                    movie = list(movie)
+                    if '0001-01-01' in movie:
+                        movie[movie.index('0001-01-01')] = '?'
                     print output_string.format(*movie)
             else:
                 print 'No matching results.'
