@@ -39,6 +39,15 @@ def strip_operator(condition):
         return ('', value)
 
 
+def reverse_operator(op):
+    if op[0] == '<':
+        return '>' + op[1:]
+    elif op[0] == '>':
+        return '<' + op[1:]
+    else:
+        return op
+
+
 class MovieDatabase(object):
     def __init__(self, file_name):
         new_db = not os.path.isfile(file_name)
@@ -139,6 +148,8 @@ class MovieDatabase(object):
             op, value = strip_operator(condition)
             if not op:
                 return []
+            else:
+                op = reverse_operator(op)
             try:
                 number, unit = value.split()
                 if unit.lower()[0] == 'y':
