@@ -93,7 +93,7 @@ class MovieDatabase(object):
                 "formats JOIN movies ON formats.id=movies.id " +
                 "WHERE title=? AND format=?", (search_data['Title'], fmt)))
             if len(records) > 0:
-                print 'Already in the database:'
+                print '\nAlready in the database:'
                 for r in records:
                     print u'{0} ({1})'.format(r[0], r[1])
             else:
@@ -108,7 +108,7 @@ class MovieDatabase(object):
                     movie_data = self.query_omdb_by_id(search_data['imdbID'])
                     if len(movie_data) > 0:
                         self.add_omdb_data(movie_data)
-                print u'{0} ({1}) added'.format(search_data['Title'], fmt)
+                print u'\n{0} ({1}) added'.format(search_data['Title'], fmt)
 
     def delete_movie(self, title, fmt):
         fmt = self.standardize_format(fmt)
@@ -118,12 +118,12 @@ class MovieDatabase(object):
                 "SELECT id, format FROM formats WHERE id=? AND format=?",
                 (search_data['imdbID'], fmt)))
             if len(records) == 0:
-                print 'Not in the database.'
+                print '\nNot in the database.'
             else:
                 self.cursor.execute(
                     "DELETE FROM formats WHERE id=? AND format=?",
                     (search_data['imdbID'], fmt))
-                print u'{0} ({1}) deleted'.format(search_data['Title'], fmt)
+                print u'\n{0} ({1}) deleted'.format(search_data['Title'], fmt)
 
     def get_all_movies(self):
         return list(self.cursor.execute("SELECT title FROM movies"))
@@ -143,6 +143,12 @@ class MovieDatabase(object):
                 return []
             query_columns.append("runtime")
             query_filters.append("runtime " + op + " ?")
+            query_values.append(value)
+        if 'series' in filters:
+            value = filters['series']
+            query_tables.append("series")
+            query_columns.append("series")
+            query_filters.append("series = ?")
             query_values.append(value)
         if 'last_viewed' in filters:
             condition = filters['last_viewed']
@@ -192,7 +198,7 @@ class MovieDatabase(object):
             if len(records) == 0:
                 self.cursor.execute("INSERT INTO series VALUES (?, ?)",
                                     (search_data['imdbID'], series))
-            print u'Added {0} to the series {1}'.format(
+            print u'\nAdded {0} to the series {1}'.format(
                 search_data['Title'], series)
 
     def add_viewing_date(self, title, date):
@@ -205,7 +211,7 @@ class MovieDatabase(object):
                 self.cursor.execute("INSERT INTO viewings VALUES (?, ?)",
                                     (search_data['imdbID'], date))
                 self.create_latest_viewings()
-            print u'Added viewing date {0} for {1}'.format(
+            print u'\nAdded viewing date {0} for {1}'.format(
                 date, search_data['Title'])
 
     def create_latest_viewings(self):
@@ -218,10 +224,10 @@ class MovieDatabase(object):
         query = 's=' + urllib.quote(title) + '&type=movie'
         results = self.omdb_query(query)
         if 'Search' not in results or len(results['Search']) == 0:
-            print 'No movies found matching {0}'.format(title)
+            print '\nNo movies found matching {0}'.format(title)
             movie_data = None
         elif len(results['Search']) > 1:
-            print 'Select a movie, or press Enter to cancel:'
+            print '\nSelect a movie, or press Enter to cancel:'
             for i, result in enumerate(results['Search']):
                 print u'{0}: {1} ({2})'.format(i, result['Title'],
                                                result['Year'])
@@ -235,7 +241,7 @@ class MovieDatabase(object):
                 movie_data = None
         else:
             movie_data = results['Search'][0]
-            print u'Found {0} ({1})'.format(movie_data['Title'],
+            print u'\nFound {0} ({1})'.format(movie_data['Title'],
                                             movie_data['Year'])
             print 'Is this the right movie?'
             confirm = raw_input()
@@ -260,7 +266,7 @@ class MovieDatabase(object):
             except:
                 pass
         if n_attempts == max_attempts:
-            print 'No response from OMDB.'
+            print '\nNo response from OMDB.'
             return {}
         else:
             return data
@@ -347,13 +353,13 @@ if __name__ == '__main__':
         input_parser.read_option(menu)
         if input_parser.has_input() and \
                 input_parser.get_input(0) == 'Add movie':
-            title = raw_input('Movie?\n')
-            fmt = raw_input('Format?\n')
+            title = raw_input('\nMovie?\n')
+            fmt = raw_input('\nFormat?\n')
             mdb.add_movie(title, fmt)
         elif input_parser.has_input() and \
                 input_parser.get_input(0) == 'Delete movie':
-            title = raw_input('Movie?\n')
-            fmt = raw_input('Format?\n')
+            title = raw_input('\nMovie?\n')
+            fmt = raw_input('\nFormat?\n')
             mdb.delete_movie(title, fmt)
         elif input_parser.has_input() and \
                 input_parser.get_input(0) == 'Search':
@@ -362,18 +368,24 @@ if __name__ == '__main__':
             output_string = u'{0}'
             runtime = raw_input('\nRuntime in minutes (e.g. < 120)?\n' +
                                 '(Press Enter to skip this filter.)\n')
-            last_viewed = raw_input('\nTime since last viewing, ' +
-                                    'in years, months, or days ' +
-                                    '(e.g. > 1 year)?\n' +
-                                    '(Press Enter to skip this filter.)\n')
             if runtime:
                 filters['runtime'] = runtime
                 n_filters += 1
                 output_string += ' - {' + str(n_filters) + '} min.'
+            last_viewed = raw_input('\nTime since last viewing, ' +
+                                    'in years, months, or days ' +
+                                    '(e.g. > 1 year)?\n' +
+                                    '(Press Enter to skip this filter.)\n')
             if last_viewed:
                 filters['last_viewed'] = last_viewed
                 n_filters += 1
                 output_string += ' - last viewed {' + str(n_filters) + '}'
+            series = raw_input('\nName of series (e.g. Star Wars)?\n' +
+                               '(Press Enter to skip this filter.)\n')
+            if series:
+                filters['series'] = series
+                n_filters += 1
+                output_string += ' - {' + str(n_filters) + '} series'
             print
             results = mdb.search(filters)
             if results:
@@ -386,13 +398,13 @@ if __name__ == '__main__':
                 print 'No matching results.'
         elif input_parser.has_input() and \
                 input_parser.get_input(0) == 'Add viewing date':
-            title = raw_input('Movie?\n')
-            date = raw_input('Date? (YYYY-MM-DD)\n')
+            title = raw_input('\nMovie?\n')
+            date = raw_input('\nDate? (YYYY-MM-DD)\n')
             mdb.add_viewing_date(title, date)
         elif input_parser.has_input() and \
                 input_parser.get_input(0) == 'Add series name':
-            title = raw_input('Movie?\n')
-            series = raw_input('Series?\n')
+            title = raw_input('\nMovie?\n')
+            series = raw_input('\nSeries?\n')
             mdb.add_to_series(title, series)
 
     mdb.close()
