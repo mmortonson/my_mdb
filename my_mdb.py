@@ -270,6 +270,15 @@ class InputParser(object):
         input_string = raw_input(prompt)
         self.input = input_string.split()
 
+    def read_option(self, options):
+        for i, option in enumerate(options):
+            print u'{0}: {1}'.format(i, option)
+        option_number = raw_input('Select an option: ')
+        try:
+            self.input = [options[int(option_number)]]
+        except:
+            self.input = []
+
     def get_input(self, i=None):
         if i is None:
             return self.input
@@ -290,20 +299,22 @@ if __name__ == '__main__':
     input_parser = InputParser()
     while not input_parser.has_input() or \
             (input_parser.has_input() and
-             not input_parser.get_input(0) in ('exit', 'quit', 'q')):
-        input_parser.read_input('\nAdd, delete, search, or exit?\n')
+             not input_parser.get_input(0) == 'Exit'):
+        print
+        menu = ['Search', 'Add movie', 'Delete movie', 'Exit']
+        input_parser.read_option(menu)
         if input_parser.has_input() and \
-                input_parser.get_input(0).lower() == 'add':
+                input_parser.get_input(0) == 'Add movie':
             title = raw_input('Movie?\n')
             fmt = raw_input('Format?\n')
             mdb.add_movie(title, fmt)
         elif input_parser.has_input() and \
-                input_parser.get_input(0).lower() == 'delete':
+                input_parser.get_input(0) == 'Delete movie':
             title = raw_input('Movie?\n')
             fmt = raw_input('Format?\n')
             mdb.delete_movie(title, fmt)
         elif input_parser.has_input() and \
-                input_parser.get_input(0).lower() == 'search':
+                input_parser.get_input(0) == 'Search':
             filters = {}
             n_filters = 0
             output_string = u'{0}'
