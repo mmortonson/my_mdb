@@ -82,6 +82,7 @@ class MovieDatabase(object):
                             "PRIMARY KEY (id, name))")
         self.cursor.execute("CREATE TABLE writers (id TEXT, name TEXT, " +
                             "PRIMARY KEY (id, name))")
+        self.create_latest_viewings()
 
     def add_movie(self, title, fmt):
         fmt = self.standardize_format(fmt)
@@ -166,10 +167,8 @@ class MovieDatabase(object):
             today = datetime.date.today()
             delta = dateutil.relativedelta.relativedelta(**interval)
             value = (today - delta).isoformat()
-            query_tables.append("viewings")
+            query_tables.append("latest_viewings")
             query_columns.append("view_date")
-            # only works for op = "="
-            # need MIN/MAX for other cases
             query_filters.append("view_date " + op + " ?")
             query_values.append(value)
 
@@ -206,8 +205,15 @@ class MovieDatabase(object):
             if len(records) == 0:
                 self.cursor.execute("INSERT INTO viewings VALUES (?, ?)",
                                     (search_data['imdbID'], date))
+                self.create_latest_viewings()
             print u'Added viewing date {0} for {1}'.format(
                 date, search_data['Title'])
+
+    def create_latest_viewings(self):
+        self.cursor.execute("DROP VIEW IF EXISTS latest_viewings")
+        self.cursor.execute("CREATE VIEW latest_viewings AS " +
+                            "SELECT id, MAX(view_date) AS view_date " +
+                            "FROM viewings GROUP BY id")
 
     def search_omdb(self, title):
         query = 's=' + urllib.quote(title) + '&type=movie'
