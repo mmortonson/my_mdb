@@ -8,7 +8,7 @@ import urllib
 import json
 import sqlite3
 import datetime
-import dateutil
+import dateutil.relativedelta
 
 # tables:
 # movies: imdbID, title, year, released, runtime, rated,
@@ -139,6 +139,22 @@ class MovieDatabase(object):
             op, value = strip_operator(condition)
             if not op:
                 return []
+            try:
+                number, unit = value.split()
+                if unit.lower()[0] == 'y':
+                    interval = {'years': int(number)}
+                elif unit.lower()[0] == 'm':
+                    interval = {'months': int(number)}
+                elif unit.lower()[0] == 'd':
+                    interval = {'days': int(number)}
+                else:
+                    raise ValueError
+            except:
+                print 'Invalid date interval format.'
+                return []
+            today = datetime.date.today()
+            delta = dateutil.relativedelta.relativedelta(**interval)
+            value = (today - delta).isoformat()
             query_tables.append("viewings")
             query_columns.append("view_date")
             # only works for op = "="
@@ -153,8 +169,8 @@ class MovieDatabase(object):
                 query_string += " ON movies.id = " + \
                     ".id AND movies.id = ".join(query_tables[1:]) + ".id"
             query_string += " WHERE " + " AND ".join(query_filters)
-        # print query_string
-        # print query_values
+        print query_string
+        print query_values
         records = list(self.cursor.execute(query_string, query_values))
         return records
 
@@ -330,7 +346,8 @@ if __name__ == '__main__':
             output_string = u'{0}'
             runtime = raw_input('Runtime in minutes (e.g. < 120)? ' +
                                 'Press Enter to skip this filter.\n')
-            last_viewed = raw_input('Time since last viewing ' +
+            last_viewed = raw_input('Time since last viewing, ' +
+                                    'in years, months, or days ' +
                                     '(e.g. > 1 year)? ' +
                                     'Press Enter to skip this filter.\n')
             if runtime:
