@@ -41,10 +41,11 @@ def strip_operator(condition):
 
 class MovieDatabase(object):
     def __init__(self, file_name):
+        new_db = not os.path.isfile(file_name)
         self.base_url = 'http://www.omdbapi.com/?'
         self.connection = sqlite3.connect(file_name)
         self.cursor = self.connection.cursor()
-        if not os.path.isfile(file_name):
+        if new_db:
             print 'Creating new database: {0}'.format(file_name)
             self.create_tables()
 
@@ -152,24 +153,32 @@ class MovieDatabase(object):
                 query_string += " ON movies.id = " + \
                     ".id AND movies.id = ".join(query_tables[1:]) + ".id"
             query_string += " WHERE " + " AND ".join(query_filters)
-        print query_string
-        print query_values
-        # records = list(self.cursor.execute(query_string, query_values))
-        return []
+        # print query_string
+        # print query_values
+        records = list(self.cursor.execute(query_string, query_values))
+        return records
 
     def add_to_series(self, title, series):
         search_data = self.search_omdb(title)
         if search_data is not None:
-            self.cursor.execute("INSERT INTO series VALUES (?, ?)",
-                                (search_data['imdbID'], series))
+            records = list(self.cursor.execute(
+                "SELECT id, series FROM series WHERE id=? AND series=?",
+                (search_data['imdbID'], series)))
+            if len(records) == 0:
+                self.cursor.execute("INSERT INTO series VALUES (?, ?)",
+                                    (search_data['imdbID'], series))
             print u'Added {0} to the series {1}'.format(
                 search_data['Title'], series)
 
     def add_viewing_date(self, title, date):
         search_data = self.search_omdb(title)
         if search_data is not None:
-            self.cursor.execute("INSERT INTO viewings VALUES (?, ?)",
-                                (search_data['imdbID'], date))
+            records = list(self.cursor.execute(
+                "SELECT id, view_date FROM viewings WHERE id=? AND view_date=?",
+                (search_data['imdbID'], date)))
+            if len(records) == 0:
+                self.cursor.execute("INSERT INTO viewings VALUES (?, ?)",
+                                    (search_data['imdbID'], date))
             print u'Added viewing date {0} for {1}'.format(
                 date, search_data['Title'])
 
@@ -301,7 +310,8 @@ if __name__ == '__main__':
             (input_parser.has_input() and
              not input_parser.get_input(0) == 'Exit'):
         print
-        menu = ['Search', 'Add movie', 'Delete movie', 'Exit']
+        menu = ['Search', 'Add movie', 'Delete movie',
+                'Add viewing date', 'Add series name', 'Exit']
         input_parser.read_option(menu)
         if input_parser.has_input() and \
                 input_parser.get_input(0) == 'Add movie':
@@ -329,8 +339,20 @@ if __name__ == '__main__':
                 output_string += ' - {' + str(n_filters) + '} min.'
             if last_viewed:
                 filters['last_viewed'] = last_viewed
+                n_filters += 1
+                output_string += ' - viewed {' + str(n_filters) + '}'
             print
             for movie in mdb.search(filters):
                 print output_string.format(*movie)
+        elif input_parser.has_input() and \
+                input_parser.get_input(0) == 'Add viewing date':
+            title = raw_input('Movie?\n')
+            date = raw_input('Date? (YYYY-MM-DD)\n')
+            mdb.add_viewing_date(title, date)
+        elif input_parser.has_input() and \
+                input_parser.get_input(0) == 'Add series name':
+            title = raw_input('Movie?\n')
+            series = raw_input('Series?\n')
+            mdb.add_to_series(title, series)
 
     mdb.close()
