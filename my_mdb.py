@@ -179,8 +179,6 @@ class MovieDatabase(object):
                 query_string += " ON movies.id = " + \
                     ".id AND movies.id = ".join(query_tables[1:]) + ".id"
             query_string += " WHERE " + " AND ".join(query_filters)
-        print query_string
-        print query_values
         records = list(self.cursor.execute(query_string, query_values))
         return records
 
@@ -376,8 +374,12 @@ if __name__ == '__main__':
                 n_filters += 1
                 output_string += ' - viewed {' + str(n_filters) + '}'
             print
-            for movie in mdb.search(filters):
-                print output_string.format(*movie)
+            results = mdb.search(filters)
+            if results:
+                for movie in results:
+                    print output_string.format(*movie)
+            else:
+                print 'No matching results.'
         elif input_parser.has_input() and \
                 input_parser.get_input(0) == 'Add viewing date':
             title = raw_input('Movie?\n')
