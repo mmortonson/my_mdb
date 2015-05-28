@@ -284,7 +284,7 @@ class MovieDatabase(object):
              omdb_dict['Rated'], omdb_dict['Plot'], omdb_dict['Poster'],
              omdb_dict['imdbRating'], omdb_dict['imdbVotes']))
         genres = self.split_into_list(omdb_dict['Genre'])
-        for g in genres:
+        for g in set(genres):
             self.cursor.execute("INSERT INTO genres VALUES (?, ?)",
                                 (omdb_dict['imdbID'], g))
         actors = self.split_into_list(omdb_dict['Actors'])
@@ -293,11 +293,11 @@ class MovieDatabase(object):
             self.cursor.execute("INSERT INTO actors VALUES (?, ?, ?)",
                                 (omdb_dict['imdbID'], a, o))
         directors = self.split_into_list(omdb_dict['Director'])
-        for d in directors:
+        for d in set(directors):
             self.cursor.execute("INSERT INTO directors VALUES (?, ?)",
                                 (omdb_dict['imdbID'], d))
         writers = self.split_into_list(omdb_dict['Writer'])
-        for w in writers:
+        for w in set(writers):
             self.cursor.execute("INSERT INTO writers VALUES (?, ?)",
                                 (omdb_dict['imdbID'], w))
 
