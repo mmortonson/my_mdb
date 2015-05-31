@@ -4,6 +4,7 @@
 import os.path
 import argparse
 import re
+import random
 import urllib
 import json
 import sqlite3
@@ -346,6 +347,25 @@ class InputParser(object):
         return len(self.input) > 0
 
 
+def sort_alpha(record):
+    title_words = record[0].split()
+    if title_words[0].lower() in ['a', 'the']:
+        return ' '.join(title_words[1:])
+    else:
+        return record[0]
+
+
+def sort_random(record):
+    return random.randint(0, 100)
+
+
+def sort_filters(record):
+    if len(record) < 2:
+        return sort_alpha(record)
+    else:
+        return record[1:]
+
+
 if __name__ == '__main__':
 
     arg_parser = argparse.ArgumentParser()
@@ -399,7 +419,17 @@ if __name__ == '__main__':
             print
             results = mdb.search(filters)
             if results:
-                for movie in results:
+                print 'How should the results be sorted?'
+                sort_menu = ['Alphabetic (default)', 'Random', 'By filters']
+                input_parser.read_option(sort_menu)
+                sort_function = sort_alpha
+                if input_parser.has_input():
+                    if input_parser.get_input(0) == 'Random':
+                        sort_function = sort_random
+                    elif input_parser.get_input(0) == 'By filters':
+                        sort_function = sort_filters
+                print
+                for movie in sorted(results, key=sort_function):
                     movie = list(movie)
                     if '0001-01-01' in movie:
                         movie[movie.index('0001-01-01')] = '?'
