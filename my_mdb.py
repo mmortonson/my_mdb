@@ -86,9 +86,9 @@ class MovieDatabase(object):
         self.connection.commit()
 
     def add_movie(self, title, fmt):
-        fmt = self.standardize_format(fmt)
         search_data = self.search_omdb(title)
-        if search_data is not None:
+        fmt = self.standardize_format(fmt)
+        if fmt and search_data:
             records = list(self.cursor.execute(
                 "SELECT title, format FROM " +
                 "formats JOIN movies ON formats.id=movies.id " +
@@ -113,9 +113,9 @@ class MovieDatabase(object):
             self.connection.commit()
 
     def delete_movie(self, title, fmt):
-        fmt = self.standardize_format(fmt)
         search_data = self.search_omdb(title)
-        if search_data is not None:
+        fmt = self.standardize_format(fmt)
+        if fmt and search_data:
             records = list(self.cursor.execute(
                 "SELECT id, format FROM formats WHERE id=? AND format=?",
                 (search_data['imdbID'], fmt)))
@@ -305,13 +305,18 @@ class MovieDatabase(object):
         comma_split = string.split(',')
         return [s.strip() for s in comma_split]
 
-    def standardize_format(self, fmt):
+    def standardize_format(self, raw_fmt):
         valid_formats = ('blu ray', 'DVD', 'iTunes', 'UltraViolet')
         pattern = re.compile('[\W_]+')
+        fmt = ''
         for f in valid_formats:
-            if pattern.sub('', fmt).lower() == pattern.sub('', f).lower():
-                return f
-        raise ValueError
+            if pattern.sub('', raw_fmt).lower() == pattern.sub('', f).lower():
+                fmt = f
+                break
+        if not fmt:
+            print '\nUnrecognized format: ' + raw_fmt
+            print 'Valid formats: ' + ', '.join(valid_formats)
+        return fmt
 
 
 class InputParser(object):
