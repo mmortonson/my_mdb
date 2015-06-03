@@ -136,7 +136,7 @@ class MovieDatabase(object):
     def search(self, filters):
         # replace these with query dictionary?
         query_string = "SELECT "
-        query_columns = ["title", "format"]
+        query_columns = ["format", "title"]
         query_tables = ["formats", "movies"]
         query_filters = []
         query_values = []
@@ -193,9 +193,6 @@ class MovieDatabase(object):
         if query_filters:
             query_string += " WHERE " + " AND ".join(query_filters)
         records = list(self.cursor.execute(query_string, query_values))
-        print query_string
-        print query_values
-        #sys.exit()
         return records
 
     def add_to_series(self, title, series):
@@ -365,11 +362,10 @@ def sort_random(record):
 
 
 def sort_filters(record):
-    # first two fields returned are title and format
-    if len(record) < 3:
+    if len(record) < 2:
         return sort_alpha(record)
     else:
-        return record[2:]
+        return record[1:]
 
 
 if __name__ == '__main__':
@@ -400,7 +396,7 @@ if __name__ == '__main__':
         elif input_parser.has_input() and \
                 input_parser.get_input(0) == 'Search':
             filters = {}
-            output_string = u'{} ({})'
+            output_string = u'{}'
             runtime = raw_input('\nRuntime in minutes (e.g. < 120)?\n' +
                                 '(Press Enter to skip this filter.)\n')
             if runtime:
@@ -431,11 +427,23 @@ if __name__ == '__main__':
                     elif input_parser.get_input(0) == 'By filters':
                         sort_function = sort_filters
                 print
-                for movie in sorted(results, key=sort_function):
-                    movie = list(movie)
-                    if '0001-01-01' in movie:
-                        movie[movie.index('0001-01-01')] = '?'
-                    print output_string.format(*movie)
+                search_result_formats = {}
+                for movie in results:
+                    fmt = movie[0]
+                    title_and_filters = movie[1:]
+                    if title_and_filters in search_result_formats:
+                        search_result_formats[title_and_filters].append(fmt)
+                    else:
+                        search_result_formats[title_and_filters] = [fmt]
+                for movie_tuple in sorted(search_result_formats.keys(),
+                                          key=sort_function):
+                    movie_list = list(movie_tuple)
+                    if '0001-01-01' in movie_list:
+                        movie_list[movie_list.index('0001-01-01')] = '?'
+                    formats = sorted(search_result_formats[movie_tuple],
+                                     key=lambda s: s.lower())
+                    print output_string.format(*movie_list) + ' (' + \
+                        ', '.join(formats) + ')'
             else:
                 print 'No matching results.'
         elif input_parser.has_input() and \
