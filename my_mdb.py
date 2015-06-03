@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 
+import sys
 import os.path
 import argparse
 import re
@@ -135,8 +136,8 @@ class MovieDatabase(object):
     def search(self, filters):
         # replace these with query dictionary?
         query_string = "SELECT "
-        query_columns = ["title"]
-        query_tables = ["movies"]
+        query_columns = ["title", "format"]
+        query_tables = ["formats", "movies"]
         query_filters = []
         query_values = []
         # replace if statements with loop over keywords and new function?
@@ -183,14 +184,18 @@ class MovieDatabase(object):
             query_filters.append("latest_date " + op + " ?")
             query_values.append(value)
 
-        query_string += ", ".join(query_columns) + " FROM " + \
-            " LEFT JOIN ".join(query_tables)
-        if filters:
-            if len(query_tables) > 1:
-                query_string += " ON movies.id = " + \
-                    ".id AND movies.id = ".join(query_tables[1:]) + ".id"
+        query_string += ", ".join(query_columns) + " FROM " + query_tables[0]
+        if len(query_tables) > 1:
+            first_table_id = query_tables[0] + ".id"
+            for t in query_tables[1:]:
+                query_string += " LEFT JOIN " + t + " ON " + \
+                    first_table_id + " = " + t + ".id"
+        if query_filters:
             query_string += " WHERE " + " AND ".join(query_filters)
         records = list(self.cursor.execute(query_string, query_values))
+        print query_string
+        print query_values
+        #sys.exit()
         return records
 
     def add_to_series(self, title, series):
@@ -360,10 +365,11 @@ def sort_random(record):
 
 
 def sort_filters(record):
-    if len(record) < 2:
+    # first two fields returned are title and format
+    if len(record) < 3:
         return sort_alpha(record)
     else:
-        return record[1:]
+        return record[2:]
 
 
 if __name__ == '__main__':
@@ -394,28 +400,24 @@ if __name__ == '__main__':
         elif input_parser.has_input() and \
                 input_parser.get_input(0) == 'Search':
             filters = {}
-            n_filters = 0
-            output_string = u'{0}'
+            output_string = u'{} ({})'
             runtime = raw_input('\nRuntime in minutes (e.g. < 120)?\n' +
                                 '(Press Enter to skip this filter.)\n')
             if runtime:
                 filters['runtime'] = runtime
-                n_filters += 1
-                output_string += ' - {' + str(n_filters) + '} min.'
+                output_string += ' - {} min.'
             last_viewed = raw_input('\nTime since last viewing, ' +
                                     'in years, months, or days ' +
                                     '(e.g. > 1 year)?\n' +
                                     '(Press Enter to skip this filter.)\n')
             if last_viewed:
                 filters['last_viewed'] = last_viewed
-                n_filters += 1
-                output_string += ' - last viewed {' + str(n_filters) + '}'
+                output_string += ' - last viewed {}'
             series = raw_input('\nName of series (e.g. Star Wars)?\n' +
                                '(Press Enter to skip this filter.)\n')
             if series:
                 filters['series'] = series
-                n_filters += 1
-                output_string += ' - {' + str(n_filters) + '} series'
+                output_string += ' - {} series'
             print
             results = mdb.search(filters)
             if results:
