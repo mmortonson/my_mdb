@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 
-import sys
 import os.path
 import argparse
 import re
@@ -72,8 +71,8 @@ class MovieDatabase(object):
                             "imdbVotes INTEGER)")
         self.cursor.execute("CREATE TABLE formats (id TEXT, format TEXT, " +
                             "PRIMARY KEY (id, format))")
-        self.cursor.execute("CREATE TABLE viewings (id TEXT, view_date DATE, " +
-                            "PRIMARY KEY (id, view_date))")
+        self.cursor.execute("CREATE TABLE viewings (id TEXT, " +
+                            "view_date DATE, PRIMARY KEY (id, view_date))")
         self.cursor.execute("CREATE TABLE series (id TEXT, series TEXT, " +
                             "PRIMARY KEY (id, series))")
         self.cursor.execute("CREATE TABLE genres (id TEXT, genre TEXT, " +
@@ -212,7 +211,8 @@ class MovieDatabase(object):
         search_data = self.search_omdb(title)
         if search_data is not None:
             records = list(self.cursor.execute(
-                "SELECT id, view_date FROM viewings WHERE id=? AND view_date=?",
+                "SELECT id, view_date FROM viewings " +
+                "WHERE id=? AND view_date=?",
                 (search_data['imdbID'], date)))
             if len(records) == 0:
                 self.cursor.execute("INSERT INTO viewings VALUES (?, ?)",
@@ -221,6 +221,14 @@ class MovieDatabase(object):
             print u'\nAdded viewing date {0} for {1}'.format(
                 date, search_data['Title'])
             self.connection.commit()
+
+    def get_recent_viewings(self, number):
+        records = list(self.cursor.execute(
+            "SELECT viewings.view_date, movies.title, viewings.id " +
+            "FROM viewings LEFT JOIN movies " +
+            "ON viewings.id = movies.id ORDER BY view_date DESC " +
+            "LIMIT ?", (number,)))
+        return records
 
     def create_latest_viewings(self):
         self.cursor.execute("DROP VIEW IF EXISTS latest_viewings")
@@ -250,7 +258,7 @@ class MovieDatabase(object):
         else:
             movie_data = results['Search'][0]
             print u'\nFound {0} ({1})'.format(movie_data['Title'],
-                                            movie_data['Year'])
+                                              movie_data['Year'])
             print 'Is this the right movie?'
             confirm = raw_input()
             if confirm.strip().lower().startswith('n'):
@@ -381,7 +389,8 @@ if __name__ == '__main__':
              not input_parser.get_input(0) == 'Exit'):
         print
         menu = ['Search', 'Add movie', 'Delete movie',
-                'Add viewing date', 'Add series name', 'Exit']
+                'Add viewing date', 'List recently viewed movies',
+                'Add series name', 'Exit']
         input_parser.read_option(menu)
         if input_parser.has_input() and \
                 input_parser.get_input(0) == 'Add movie':
@@ -451,6 +460,15 @@ if __name__ == '__main__':
             title = raw_input('\nMovie?\n')
             date = raw_input('\nDate? (YYYY-MM-DD)\n')
             mdb.add_viewing_date(title, date)
+        elif input_parser.has_input() and \
+                input_parser.get_input(0) == 'List recently viewed movies':
+            movie_list = mdb.get_recent_viewings(10)
+            print
+            for date, title, imdb_id in movie_list:
+                if title is None:
+                    movie_data = mdb.query_omdb_by_id(imdb_id)
+                    title = movie_data.get('Title', 'unknown')
+                print '{} - {}'.format(date, title)
         elif input_parser.has_input() and \
                 input_parser.get_input(0) == 'Add series name':
             title = raw_input('\nMovie?\n')
